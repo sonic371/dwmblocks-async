@@ -27,7 +27,7 @@
     X("", "dwmblocks-brightness-control", 0, 1)  \
     X("", "dwmblocks-volume-control", 0, 8)  \
     X("", "info-battery", 60, 9) \
-    X("󰧒 ", "date '+%a %m/%d'", 3600, 12) \
+    X("󰧒 ", "date '+%a %m/%d'", 60, 12) \
     X("", "dwmblocks-date", 1, 10)
 
 #endif  // CONFIG_H
