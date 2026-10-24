@@ -1,5 +1,6 @@
 #include "block.h"
 
+#include <signal.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -12,6 +13,10 @@
 
 #include "config.h"
 #include "util.h"
+
+static void discard_signal(const int signal) {
+    (void)signal;
+}
 
 block block_new(const char *const icon, const char *const command,
                 const unsigned int interval, const int signal) {
@@ -66,8 +71,27 @@ int block_execute(block *const block, const uint8_t button) {
     }
 
     if (block->fork_pid == 0) {
+        // Unblock the signals inherited from the parent so the command, and
+        // anything it launches, can receive them. Catch them first so stray
+        // signals meant for the parent (e.g. `pkill dwmblocks`) don't kill this
+        // process; exec resets caught signals to their default action.
+        sigset_t signals;
+        int status = sigprocmask(SIG_SETMASK, NULL, &signals);
+        struct sigaction action = {
+            .sa_handler = discard_signal,
+            .sa_flags = SA_RESTART,
+        };
+        status |= sigemptyset(&action.sa_mask);
+        for (int i = 1; i <= SIGRTMAX; ++i) {
+            if (sigismember(&signals, i) == 1) {
+                status |= sigaction(i, &action, NULL);
+            }
+        }
+        status |= sigemptyset(&signals);
+        status |= sigprocmask(SIG_SETMASK, &signals, NULL);
+
         const int write_fd = block->pipe[WRITE_END];
-        int status = close(block->pipe[READ_END]);
+        status |= close(block->pipe[READ_END]);
 
         if (button != 0) {
             char button_str[4];
